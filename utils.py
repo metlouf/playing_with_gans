@@ -1,7 +1,7 @@
 import torch
 import os
 
-
+from variables import *
 
 def D_train(x, G, D, D_optimizer, criterion):
     #=======================Train the discriminator=======================#
@@ -9,15 +9,14 @@ def D_train(x, G, D, D_optimizer, criterion):
 
     # train discriminator on real
     x_real, y_real = x, torch.ones(x.shape[0], 1)
-    x_real, y_real = x_real.cuda(), y_real.cuda()
-
+    x_real, y_real = x_real.to(device), y_real.to(device)
     D_output = D(x_real)
     D_real_loss = criterion(D_output, y_real)
     D_real_score = D_output
 
     # train discriminator on facke
-    z = torch.randn(x.shape[0], 100).cuda()
-    x_fake, y_fake = G(z), torch.zeros(x.shape[0], 1).cuda()
+    z = torch.randn(x.shape[0], 100).to(device)
+    x_fake, y_fake = G(z), torch.zeros(x.shape[0], 1).to(device)
 
     D_output =  D(x_fake)
     
@@ -36,8 +35,8 @@ def G_train(x, G, D, G_optimizer, criterion):
     #=======================Train the generator=======================#
     G.zero_grad()
 
-    z = torch.randn(x.shape[0], 100).cuda()
-    y = torch.ones(x.shape[0], 1).cuda()
+    z = torch.randn(x.shape[0], 100).to(device)
+    y = torch.ones(x.shape[0], 1).to(device)
                  
     G_output = G(z)
     D_output = D(G_output)
@@ -57,6 +56,6 @@ def save_models(G, D, folder):
 
 
 def load_model(G, folder):
-    ckpt = torch.load(os.path.join(folder,'G.pth'))
+    ckpt = torch.load(os.path.join(folder,'G.pth'),map_location=torch.device(device))
     G.load_state_dict({k.replace('module.', ''): v for k, v in ckpt.items()})
     return G

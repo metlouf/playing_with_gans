@@ -10,7 +10,7 @@ import torch.optim as optim
 from model import Generator, Discriminator
 from utils import D_train, G_train, save_models
 
-
+from variables import *
 
 
 if __name__ == '__main__':
@@ -48,11 +48,15 @@ if __name__ == '__main__':
 
     print('Model Loading...')
     mnist_dim = 784
-    G = torch.nn.DataParallel(Generator(g_output_dim = mnist_dim)).cuda()
-    D = torch.nn.DataParallel(Discriminator(mnist_dim)).cuda()
 
+    if device == 'cuda':
+        G = torch.nn.DataParallel(Generator(g_output_dim = mnist_dim).to(device)).to(device)
+        D = torch.nn.DataParallel(Discriminator(mnist_dim).to(device)).to(device)
+    else : 
+        G = Generator(g_output_dim = mnist_dim).to(device)
+        D = Discriminator(mnist_dim).to(device)
 
-    # model = DataParallel(model).cuda()
+    # model = DataParallel(model).to(device)
     print('Model loaded.')
     # Optimizer 
 
