@@ -86,7 +86,7 @@ if __name__ == '__main__':
     D_real_loss = []
     D_fake_loss = []
     G_loss = []
-    fid_min = 0
+    fid_min = np.inf
     for epoch in trange(1, n_epoch+1, leave=True):
         g_loss = 0
         d_loss = 0
