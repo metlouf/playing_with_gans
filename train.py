@@ -86,7 +86,7 @@ if __name__ == '__main__':
     D_real_loss = []
     D_fake_loss = []
     G_loss = []
-    fid_max = 0
+    fid_min = 0
     for epoch in trange(1, n_epoch+1, leave=True):
         g_loss = 0
         d_loss = 0
@@ -108,8 +108,8 @@ if __name__ == '__main__':
             #Calculate the FID
             fid_value = calculate_fid_given_paths(['samples/real_samples', 'samples/fake_samples'],batch_size = args.batch_size,device = device,dims = 2048)
             print(f'Epoch {epoch}, FID: {fid_value:.2f}')
-            if fid_value > fid_max:
-                fid_max = fid_value
+            if fid_value < fid_min:
+                fid_min = fid_value
                 fid_values.append(fid_value)
                 save_models(G, D, 'checkpoints')
             else:
