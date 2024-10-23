@@ -58,7 +58,7 @@ if __name__ == '__main__':
     print('Model Loading...')
     mnist_dim = 784
 
-    if device == 'cuda':
+    if device == 'mps':
         G = torch.nn.DataParallel(Generator(g_output_dim = mnist_dim).to(device)).to(device)
         D = torch.nn.DataParallel(Discriminator(mnist_dim).to(device)).to(device)
     else :
@@ -92,11 +92,12 @@ if __name__ == '__main__':
         d_loss = 0
         d_real_loss = 0
         d_fake_loss = 0
+        delay_value = 0
         for batch_idx, (x, _) in enumerate(train_loader):
             x = x.view(-1, mnist_dim)
-            d_loss_batch, d_rea_loss_batch, d_fake_loss_batch = D_train(x, G, D, D_optimizer, criterion)
+            d_loss_batch, d_real_loss_batch, d_fake_loss_batch = D_train(x, G, D, D_optimizer, criterion)
             d_loss += d_loss_batch
-            d_real_loss += d_rea_loss_batch
+            d_real_loss += d_real_loss_batch
             d_fake_loss += d_fake_loss_batch
             g_loss += G_train(x, G, D, G_optimizer, criterion)
         D_loss.append(d_loss / batch_idx)
@@ -112,13 +113,15 @@ if __name__ == '__main__':
                 fid_min = fid_value
                 fid_values.append(fid_value)
                 save_models(G, D, 'checkpoints')
-            else:
+            elif (fid_value >= fid_min) and (delay_value == 3):
                 print('Stopping training as FID is not improving')
                 break
+            else:
+                delay_value += 1
     if args.save_metrics:
         print(D_loss)
         D_loss, G_loss, D_real_loss, D_fake_loss, fid_values = np.array(D_loss), np.array(G_loss), np.array(D_real_loss), np.array(D_fake_loss), np.array(fid_values)
-        directory = f"metrics/{args.epochs}_{args.lr}_{args.batch_size}"
+        directory = f"metrics/epochs_{args.epochs}_lr_{args.lr}_batch_{args.batch_size}_spectral_normalized"
         os.makedirs(directory, exist_ok=True)
         np.save(directory + '/D_loss.npy', D_loss)
         np.save(directory + '/G_loss.npy', G_loss)
