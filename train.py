@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train Normalizing Flow.')
     parser.add_argument("--epochs", type=int, default=100,
                         help="Number of epochs for training.")
-    parser.add_argument("--lr", type=float, default=0.0001,
+    parser.add_argument("--lr", type=float, default=0.0002,
                       help="The learning rate to use for training.")
     parser.add_argument("--batch_size", type=int, default=64,
                         help="Size of mini-batches for SGD")
@@ -106,8 +106,7 @@ if __name__ == '__main__':
             d_acc_real += d_acc_real_batch
             d_acc_fake += d_acc_fake_batch
 
-            if epoch > 20:
-                g_loss += G_train(x, G, D, G_optimizer, criterion)
+            g_loss += G_train(x, G, D, G_optimizer, criterion)
 
         writer.add_scalars("train/Dloss",{
             "D_loss_total" : d_loss / batch_idx,
