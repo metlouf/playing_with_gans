@@ -61,7 +61,7 @@ class TestingPipeline:
 
         print('Finish Generating')
         print('Start Computing Metrics')
-        ipr = IPR(device = self.device, k = 1, batch_size= batch_size, num_samples = 5000)
+        ipr = IPR(device = self.device, k = 5, batch_size= batch_size, num_samples = 5000)
         ipr.compute_manifold_ref(self.path_real)
         images = images.reshape(-1, 28, 28).unsqueeze(1).repeat(1, 3, 1, 1)
         print(images.shape)
@@ -72,8 +72,8 @@ class TestingPipeline:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_path', type=str, required=True)
-    parser.add_argument('--batch_size', type=int, default=64)
-    parser.add_argument('--device', type=str, default=torch.device('mps'))
+    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--device', type=str, default=torch.device('cuda'))
     parser.add_argument('--model_type', type=str, default='vanilla_gan')
     parser.add_argument('--mnist_dim', type=int, default=784)
     args = parser.parse_args()
