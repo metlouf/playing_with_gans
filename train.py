@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train Normalizing Flow.')
     parser.add_argument("--epochs", type=int, default=100,
                         help="Number of epochs for training.")
-    parser.add_argument("--lr", type=float, default=0.0002,
+    parser.add_argument("--lr", type=float, default=0.0001,
                       help="The learning rate to use for training.")
     parser.add_argument("--batch_size", type=int, default=64,
                         help="Size of mini-batches for SGD")
@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
     # define optimizers
     G_optimizer = optim.Adam(G.parameters(), lr = args.lr)
-    D_optimizer = optim.Adam(D.parameters(), lr = args.lr)
+    D_optimizer = optim.Adam(D.parameters(), lr = 2*args.lr)
 
     print('Start Training :')
 
