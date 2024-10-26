@@ -82,14 +82,14 @@ if __name__ == '__main__':
 
     # define optimizers
     G_optimizer = optim.Adam(G.parameters(), lr = args.lr)
-    D_optimizer = optim.Adam(D.parameters(), lr = 2*args.lr)
+    D_optimizer = optim.Adam(D.parameters(), lr = args.lr)
 
     print('Start Training :')
 
     n_epoch = args.epochs
     fid_max = 0
 
-    for epoch in trange(1, n_epoch+1, leave=True):
+    for epoch in trange(0, n_epoch+1, leave=True):
         g_loss = 0
         d_loss = 0
         d_real_loss = 0
@@ -106,7 +106,8 @@ if __name__ == '__main__':
             d_acc_real += d_acc_real_batch
             d_acc_fake += d_acc_fake_batch
 
-            g_loss += G_train(x, G, D, G_optimizer, criterion)
+            if epoch > 20:
+                g_loss += G_train(x, G, D, G_optimizer, criterion)
 
         writer.add_scalars("train/Dloss",{
             "D_loss_total" : d_loss / batch_idx,
@@ -120,18 +121,21 @@ if __name__ == '__main__':
             },epoch)
 
         writer.add_scalar("train/Gloss",g_loss / batch_idx,epoch)
-
-        with torch.no_grad() :
-            if args.track_fid :
-                if epoch % 20 == 0:
-                    #generate_fake_samples(args, G, args.n_samples, device)
+        if epoch % 10 == 0:
+            with torch.no_grad() :
+                if args.track_fid :
+                    generate_fake_samples(args, G, args.n_samples, device)
                     #Calculate and Save the FID
                     fid_value = calculate_fid_given_paths(['samples/real_samples', 'samples/fake_samples'],batch_size = args.batch_size,device = device,dims = 2048)
                     writer.add_scalar("train/FID",fid_value,epoch)
-
                     print(f'Epoch {epoch}, FID: {fid_value:.2f}')
-                    print("D_loss",d_loss / batch_idx)
-                    print("G_loss",g_loss / batch_idx)
+
+                z = torch.randn(1, 100).to(device)
+                G_output = (G(z)+1)/2
+                writer.add_image("train/Fake_images", G_output.reshape(1,28,28), epoch)
+
+                print("D_loss",d_loss / batch_idx)
+                print("G_loss",g_loss / batch_idx)
 
         if args.early_stop:
             if fid_value > fid_max:
