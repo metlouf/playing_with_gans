@@ -7,11 +7,9 @@ from torchvision import datasets, transforms
 import torch.nn as nn
 import torch.optim as optim
 
-
 from model import Generator, Discriminator
 from utils import D_train, G_train, save_models, generate_fake_samples, save_real_samples
 from pytorch_fid.fid_score import calculate_fid_given_paths
-
 from variables import *
 
 

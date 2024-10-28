@@ -9,10 +9,10 @@ from variables import *
 class Generator(nn.Module):
     def __init__(self, g_output_dim):
         super(Generator, self).__init__()
-        self.fc1 = spectral_norm(nn.Linear(100, 256))
-        self.fc2 = spectral_norm(nn.Linear(self.fc1.out_features, self.fc1.out_features*2))
-        self.fc3 = spectral_norm(nn.Linear(self.fc2.out_features, self.fc2.out_features*2))
-        self.fc4 = spectral_norm(nn.Linear(self.fc3.out_features, g_output_dim))
+        self.fc1 = nn.Linear(100, 256)
+        self.fc2 = nn.Linear(self.fc1.out_features, self.fc1.out_features*2)
+        self.fc3 = nn.Linear(self.fc2.out_features, self.fc2.out_features*2)
+        self.fc4 = nn.Linear(self.fc3.out_features, g_output_dim)
 
     # forward method
     def forward(self, x):
