@@ -6,13 +6,20 @@ import argparse
 from torchvision import datasets, transforms
 import torch.nn as nn
 import torch.optim as optim
+import datetime
+
+from torch.utils.tensorboard import SummaryWriter
 
 from model import Generator, Discriminator
 from utils import D_train, G_train, save_models, generate_fake_samples, save_real_samples
 from pytorch_fid.fid_score import calculate_fid_given_paths
+
 from variables import *
 
-
+current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+log_dir = 'logs/' + current_time + '/'
+writer = SummaryWriter(log_dir)
+print("run this for logs : tensorboard --logdir",log_dir)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train Normalizing Flow.')
@@ -24,9 +31,10 @@ if __name__ == '__main__':
                         help="Size of mini-batches for SGD")
     parser.add_argument("--n_samples", type=int, default=5000)
     parser.add_argument("--save_metrics", type=bool, default=False)
+    parser.add_argument("--early_stop", type=bool, default=False)
+    parser.add_argument("--track_fid", type=bool, default=False)
 
     args = parser.parse_args()
-
 
     os.makedirs('checkpoints', exist_ok=True)
     os.makedirs('data', exist_ok=True)
@@ -56,7 +64,7 @@ if __name__ == '__main__':
     print('Model Loading...')
     mnist_dim = 784
 
-    if device == 'mps':
+    if device == 'cuda':
         G = torch.nn.DataParallel(Generator(g_output_dim = mnist_dim).to(device)).to(device)
         D = torch.nn.DataParallel(Discriminator(mnist_dim).to(device)).to(device)
     else :
@@ -79,52 +87,64 @@ if __name__ == '__main__':
     print('Start Training :')
 
     n_epoch = args.epochs
-    fid_values = []
-    D_loss =[]
-    D_real_loss = []
-    D_fake_loss = []
-    G_loss = []
-    fid_min = np.inf
-    for epoch in trange(1, n_epoch+1, leave=True):
+    fid_max = 0
+
+    for epoch in trange(0, n_epoch+1, leave=True):
         g_loss = 0
         d_loss = 0
         d_real_loss = 0
         d_fake_loss = 0
-        delay_value = 0
+        d_acc_real = 0
+        d_acc_fake = 0
         for batch_idx, (x, _) in enumerate(train_loader):
             x = x.view(-1, mnist_dim)
-            d_loss_batch, d_real_loss_batch, d_fake_loss_batch = D_train(x, G, D, D_optimizer, criterion)
+
+            d_loss_batch, d_rea_loss_batch, d_fake_loss_batch,d_acc_real_batch,d_acc_fake_batch = D_train(x, G, D, D_optimizer, criterion)
             d_loss += d_loss_batch
-            d_real_loss += d_real_loss_batch
+            d_real_loss += d_rea_loss_batch
             d_fake_loss += d_fake_loss_batch
+            d_acc_real += d_acc_real_batch
+            d_acc_fake += d_acc_fake_batch
+
             g_loss += G_train(x, G, D, G_optimizer, criterion)
-        D_loss.append(d_loss / batch_idx)
-        G_loss.append(g_loss / batch_idx)
-        D_real_loss.append(d_real_loss / batch_idx)
-        D_fake_loss.append(d_fake_loss / batch_idx)
-        if epoch % 20 == 0:
-            generate_fake_samples(args, G, args.n_samples, device)
-            #Calculate the FID
-            fid_value = calculate_fid_given_paths(['samples/real_samples', 'samples/fake_samples'],batch_size = args.batch_size,device = device,dims = 2048)
-            print(f'Epoch {epoch}, FID: {fid_value:.2f}')
-            if fid_value < fid_min:
-                fid_min = fid_value
+
+        writer.add_scalars("train/Dloss",{
+            "D_loss_total" : d_loss / batch_idx,
+            "D_real_loss" : d_real_loss / batch_idx,
+            "D_fake_loss" : d_fake_loss / batch_idx
+            },epoch)
+
+        writer.add_scalars("train/D_accuracy",{
+            "D_accuracy_on_real" : d_acc_real / batch_idx,
+            "D_accuracy_on_fake" : d_acc_fake / batch_idx,
+            },epoch)
+
+        writer.add_scalar("train/Gloss",g_loss / batch_idx,epoch)
+        if epoch % 10 == 0:
+            with torch.no_grad() :
+                if args.track_fid :
+                    generate_fake_samples(args, G, args.n_samples, device)
+                    #Calculate and Save the FID
+                    fid_value = calculate_fid_given_paths(['samples/real_samples', 'samples/fake_samples'],batch_size = args.batch_size,device = device,dims = 2048)
+                    writer.add_scalar("train/FID",fid_value,epoch)
+                    print(f'Epoch {epoch}, FID: {fid_value:.2f}')
+
+                z = torch.randn(1, 100).to(device)
+                G_output = (G(z)+1)/2
+                writer.add_image("train/Fake_images", G_output.reshape(1,28,28), epoch)
+
+                print("D_loss",d_loss / batch_idx)
+                print("G_loss",g_loss / batch_idx)
+
+        if args.early_stop:
+            if fid_value > fid_max:
+                fid_max = fid_value
                 fid_values.append(fid_value)
-                save_models(G, D, 'checkpoints')
-            elif (fid_value >= fid_min) and (delay_value == 3):
+            else:
                 print('Stopping training as FID is not improving')
                 break
-            else:
-                delay_value += 1
-    if args.save_metrics:
-        print(D_loss)
-        D_loss, G_loss, D_real_loss, D_fake_loss, fid_values = np.array(D_loss), np.array(G_loss), np.array(D_real_loss), np.array(D_fake_loss), np.array(fid_values)
-        directory = f"metrics/epochs_{args.epochs}_lr_{args.lr}_batch_{args.batch_size}_spectral_normalized"
-        os.makedirs(directory, exist_ok=True)
-        np.save(directory + '/D_loss.npy', D_loss)
-        np.save(directory + '/G_loss.npy', G_loss)
-        np.save(directory + '/D_real_loss.npy', D_real_loss)
-        np.save(directory + '/D_fake_loss.npy', D_fake_loss)
-        np.save(directory + '/fid_values.npy', fid_values)
 
+
+    save_models(G, D, 'checkpoints')
+    writer.close()
     print('Training done')

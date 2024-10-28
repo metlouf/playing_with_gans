@@ -14,6 +14,22 @@ class Generator(nn.Module):
         self.fc3 = nn.Linear(self.fc2.out_features, self.fc2.out_features*2)
         self.fc4 = nn.Linear(self.fc3.out_features, g_output_dim)
 
+        # Initialize weights
+        #self._initialize_weights()
+    
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                # Xavier initialization with gain for LeakyReLU
+                nn.init.xavier_uniform_(module.weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+        
+        # Special initialization for the final layer
+        nn.init.xavier_uniform_(self.fc4.weight, gain=nn.init.calculate_gain('tanh'))
+        if self.fc4.bias is not None:
+            nn.init.constant_(self.fc4.bias, 0)
+
     # forward method
     def forward(self, x):
         x = F.leaky_relu(self.fc1(x), 0.2)
@@ -33,6 +49,22 @@ class Discriminator(nn.Module):
         self.fc3 = spectral_norm(nn.Linear(self.fc2.out_features, self.fc2.out_features//2))
         self.fc4 = spectral_norm(nn.Linear(self.fc3.out_features, 1))
 
+        # Initialize weights
+        #self._initialize_weights()
+    
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                # Xavier initialization with gain for LeakyReLU
+                nn.init.xavier_uniform_(module.weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+        
+        # Special initialization for the final layer
+        nn.init.xavier_uniform_(self.fc4.weight, gain=nn.init.calculate_gain('sigmoid'))
+        if self.fc4.bias is not None:
+            nn.init.constant_(self.fc4.bias, 0)
+    
     # forward method
     def forward(self, x):
         x = F.leaky_relu(self.fc1(x), 0.2)
