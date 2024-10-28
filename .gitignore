@@ -1,11 +1,7 @@
 data
 samples
 ganglions
-<<<<<<< HEAD
 images
 metrics
-
-=======
 *.pyc
 logs
->>>>>>> main
