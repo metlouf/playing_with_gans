@@ -63,6 +63,7 @@ if __name__ == '__main__':
 
     print('Model Loading...')
     mnist_dim = 784
+    print(device)
 
     if device == 'cuda':
         G = torch.nn.DataParallel(Generator(g_output_dim = mnist_dim).to(device)).to(device)
@@ -120,7 +121,7 @@ if __name__ == '__main__':
             },epoch)
 
         writer.add_scalar("train/Gloss",g_loss / batch_idx,epoch)
-        if epoch % 10 == 0:
+        if (epoch % 50 == 0) and (epoch > 0):
             with torch.no_grad() :
                 if args.track_fid :
                     generate_fake_samples(args, G, args.n_samples, device)
@@ -139,7 +140,6 @@ if __name__ == '__main__':
         if args.early_stop:
             if fid_value > fid_max:
                 fid_max = fid_value
-                fid_values.append(fid_value)
             else:
                 print('Stopping training as FID is not improving')
                 break

@@ -145,4 +145,4 @@ def make_image(G, D, batchsize, N_update=100, ot=True, mode='dot', k=1, lr=0.05,
         y = G(tz_y)
     else:
         y = G(z)
-    return y.reshape(batch_size, 28, 28).data.cpu()
+    return y.reshape(batchsize, 28, 28).data.cpu()
