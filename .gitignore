@@ -1,5 +1,7 @@
 data
 samples
 ganglions
+images
+metrics
 *.pyc
 logs
