@@ -145,41 +145,39 @@ def labelize(images):
     return np.concatenate(labels, axis=0),np.concatenate(confidences, axis=0)
 
 
-transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=(0.5), std=(0.5))])
+if __name__ == '__main__':
 
-train_dataset = datasets.MNIST(root='data/MNIST/', train=True, transform=transform, download=True)
-test_dataset = datasets.MNIST(root='data/MNIST/', train=False, transform=transform, download=False)
-
-X = train_dataset.data[:10000]#.reshape((-1,28*28))[:10000]
-y = train_dataset.targets[:10000]
-
-# Test original image space
-tsne_pipeline(X.flatten(start_dim = 1),y, "MNIST Dataset - Original Image Space")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data', type=str, default="original")
+    parser.add_argument('--encoding', type=str, default="vgg5")
+    args = parser.parse_args()
 
 
-X = load_bw_images("samples")
-print(X.shape)
-y,confidence = labelize(X)
+    transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=(0.5), std=(0.5))])
 
-new_X = vgg5_encoding(X)
-tsne_pipeline(new_X,y, "MNIST Dataset -  VGG 5 (fine-tuned) Space",confidence)
+    train_dataset = datasets.MNIST(root='data/MNIST/', train=True, transform=transform, download=True)
+    test_dataset = datasets.MNIST(root='data/MNIST/', train=False, transform=transform, download=False)
 
-new_X = vgg16_encoding(X)
-tsne_pipeline(new_X,y, "MNIST Dataset - VGG 16 (pretrained) Space",confidence)
+    if args.data == 'original':
 
+        X = train_dataset.data[:10000]#.reshape((-1,28*28))[:10000]
+        y = train_dataset.targets[:10000]
+        confidence = np.ones(len(y))
 
-"""     
-# Test different embeddings
-from sklearn.decomposition import PCA
-X_pca = PCA(n_components=20).fit_transform(X)
-tsne_pipeline(X_pca,y, "MNIST Dataset - PCA Embeddings")
+    if args.data == 'fake' : 
+        X = load_bw_images("samples")
+        print(X.shape)
+        y,confidence = labelize(X)
 
-# You can now try other embedding methods, such as:
-# - Autoencoders
-# - Word2Vec
-# - UMAP
-# - etc.
-# and pass them to the tsne_pipeline function to visualize the results
-"""
+    if args.encoding == "image": 
+        tsne_pipeline(X,y, f"MNIST {args.data} Dataset -  VGG 5 (fine-tuned) Space",confidence)
+
+    if args.encoding == "vgg5": 
+        new_X = vgg5_encoding(X)
+        tsne_pipeline(new_X,y, f"MNIST {args.data} Dataset -  VGG 5 (fine-tuned) Space",confidence)
+
+    if args.encoding == "vgg16": 
+        new_X = vgg16_encoding(X)
+        tsne_pipeline(new_X,y, f"MNIST {args.data} Dataset - VGG 16 (pretrained) Space",confidence)
