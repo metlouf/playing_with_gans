@@ -79,7 +79,7 @@ def vgg16_encoding(images):
 
     return np.concatenate(features, axis=0)
 
-def tsne_pipeline(embeddings,labels, title):
+def tsne_pipeline(embeddings,labels, title,confidence=[]):
     """
     Runs TSNE on the provided embeddings and visualizes the result.
     
@@ -89,9 +89,12 @@ def tsne_pipeline(embeddings,labels, title):
     """
     tsne = TSNE(n_components=2, random_state=42,verbose=1)
     X_tsne = tsne.fit_transform(embeddings)
+
+    if len(confidence)<1 :
+        confidence=np.ones(len(labels))
     
     plt.figure(figsize=(8, 8))
-    plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=labels, cmap='tab10', s=2)
+    plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=labels,alpha=confidence, cmap='tab10', s=2)
     plt.title(title)
     plt.axis('off')
     plt.colorbar()
@@ -152,19 +155,20 @@ test_dataset = datasets.MNIST(root='data/MNIST/', train=False, transform=transfo
 X = train_dataset.data[:10000]#.reshape((-1,28*28))[:10000]
 y = train_dataset.targets[:10000]
 
+# Test original image space
+tsne_pipeline(X.flatten(start_dim = 1),y, "MNIST Dataset - Original Image Space")
+
 
 X = load_bw_images("samples")
 print(X.shape)
 y,confidence = labelize(X)
 
-# Test original image space
-tsne_pipeline(X.flatten(start_dim = 1),y, "MNIST Dataset - Original Image Space")
+new_X = vgg5_encoding(X)
+tsne_pipeline(new_X,y, "MNIST Dataset -  VGG 5 (fine-tuned) Space",confidence)
 
 new_X = vgg16_encoding(X)
-tsne_pipeline(new_X,y, "MNIST Dataset - VGG 16 (pretrained) Space")
+tsne_pipeline(new_X,y, "MNIST Dataset - VGG 16 (pretrained) Space",confidence)
 
-new_X = vgg5_encoding(X)
-tsne_pipeline(new_X,y, "MNIST Dataset -  VGG 5 (fine-tuned) Space")
 
 """     
 # Test different embeddings
