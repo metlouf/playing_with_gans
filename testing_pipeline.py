@@ -3,19 +3,20 @@ import torchvision
 import os
 import argparse
 from improved_precision_recall import IPR
-from model import Generator
+from model import Generator, Discriminator
+from latent_space_OT import make_image
 from utils import load_model
 from torchvision import datasets, transforms
 
 class TestingPipeline:
-    def __init__(self, model, device):
-        self.model = model
+    def __init__(self, G, D, device):
+        self.G = G
+        self.D = D
         self.path_real = 'samples/real_samples'
         self.device = device
+        self.G.device = device
 
     def compute_metrics(self, batch_size):
-        self.model = torch.nn.DataParallel(self.model).to(self.device)
-        self.model.eval()
         print('Start Generating')
         os.makedirs('samples', exist_ok=True)
 
@@ -37,37 +38,22 @@ class TestingPipeline:
                         compt += 1
                         if compt>= 79*batch_size:
                             break
-
-
         except:
             print('Real samples already exist')
 
-        n_samples = 0
-        with torch.no_grad():
-            try:
-                os.makedirs('samples/fake_samples', exist_ok=False)
-            except:
-                print('Fake samples directory already exist')
-            images = torch.zeros((150, batch_size, 28, 28))
-            compt = 0
-            while compt < 79 * batch_size:
-                z = torch.randn(batch_size, 100).to(self.device)
-                x = self.model(z)
-                x = x.reshape(batch_size, 28, 28)
-                images[n_samples, :, :, :] = x
-                for k in range(x.shape[0]):
-                        torchvision.utils.save_image(x[k:k+1], os.path.join(self.path_real + '/../fake_samples', f'{compt}.png'))
-                        compt += 1
-
-        print('Finish Generating')
-        print('Start Computing Metrics')
-        ipr = IPR(device = self.device, k = 5, batch_size= batch_size, num_samples = 5000)
-        ipr.compute_manifold_ref(self.path_real)
-        images = images.reshape(-1, 28, 28).unsqueeze(1).repeat(1, 3, 1, 1)
-        print(images.shape)
-        metric = ipr.precision_and_recall(self.path_real + '/../fake_samples')
-        print('precision =', metric.precision)
-        print('recall =', metric.recall)
+        n_samples = args.n_samples
+        for lr in args.lr:
+            for N_update in args.N_update:
+                print(N_update)
+                print(f'lr = {lr}, N_update = {N_update}')
+                img = make_image(G = self.G, D= self.D, batchsize = n_samples, N_update=N_update, ot=True, mode='dot', k=1, lr=lr, optmode='adam')
+                for k in range(n_samples):
+                    torchvision.utils.save_image(img[k, :, :], os.path.join('samples/fake_samples', f'{k}.png'))
+                ipr = IPR(device = self.device, k = 5, batch_size= batch_size, num_samples = 5000)
+                ipr.compute_manifold_ref(self.path_real)
+                metric = ipr.precision_and_recall(self.path_real + '/../fake_samples')
+                print('precision =', metric.precision)
+                print('recall =', metric.recall)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -76,10 +62,23 @@ if __name__ == '__main__':
     parser.add_argument('--device', type=str, default=torch.device('cuda'))
     parser.add_argument('--model_type', type=str, default='vanilla_gan')
     parser.add_argument('--mnist_dim', type=int, default=784)
+    parser.add_argument('--n_samples', type=int, default=10000)
+    parser.add_argument('--lr', type=list, default=[0.05, 0.005, 0.0005, 0.00005])
+    parser.add_argument('--N_update', type= list, default=[10, 20, 50, 100, 200])
     args = parser.parse_args()
     device = args.device
     if args.model_type == 'vanilla_gan':
-        model = Generator(g_output_dim= args.mnist_dim)
-    model = load_model(model, args.model_path)
-    pipeline = TestingPipeline(model, device)
+        G = Generator(g_output_dim= args.mnist_dim)
+        D = Discriminator(args.mnist_dim)
+    G = load_model(G, args.model_path)
+    D = load_model(D, args.model_path, mode='D')
+    if device == 'cuda':
+        G = torch.nn.DataParallel(G).to(device)
+        G = torch.nn.DataParallel(G).to(device)
+        D = torch.nn.DataParallel(D).to(device)
+        D = torch.nn.DataParallel(D).to(device)
+    else :
+        G = G.to(device)
+        D = D.to(device)
+    pipeline = TestingPipeline(G, D, device)
     pipeline.compute_metrics(args.batch_size)
