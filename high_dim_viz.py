@@ -19,8 +19,10 @@ from pathlib import Path
 from PIL import Image
 
 import model_vgg.vgg_5 as model_vgg
-vgg5 = model_vgg.VGG().to(device).eval()
-vgg5.load_state_dict(torch.load("model_vgg/VGG_fine_tuned.pth"))
+
+vgg5 = model_vgg.VGG().eval()
+vgg5.load_state_dict(torch.load("model_vgg/VGG_fine_tuned.pth", map_location=torch.device('cpu')))
+vgg5 = vgg5.to(device)
 batch_size = 16
 
 def vgg5_encoding(images):
@@ -82,7 +84,7 @@ def vgg16_encoding(images):
 def tsne_pipeline(embeddings,labels, title,confidence=[]):
     """
     Runs TSNE on the provided embeddings and visualizes the result.
-    
+
     Parameters:
     embeddings (np.ndarray): Array of data embeddings, shape (n_samples, n_features)
     title (str): Title for the plot
@@ -92,7 +94,7 @@ def tsne_pipeline(embeddings,labels, title,confidence=[]):
 
     if len(confidence)<1 :
         confidence=np.ones(len(labels))
-    
+
     plt.figure(figsize=(8, 8))
     plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=labels,alpha=confidence, cmap='tab10', s=2)
     plt.title(title)
@@ -104,23 +106,26 @@ def load_bw_images(directory_path):
     image_paths = list(Path(directory_path).glob('*.[pj][np][g]*'))  # matches .jpg, .jpeg, .png
     if not image_paths:
         raise ValueError(f"No images found in {directory_path}")
-    
+    transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=(0.5), std=(0.5))])
+
     images = []
     for img_path in image_paths:
         # Open image and convert to grayscale
         with Image.open(img_path) as img:
             # Convert to grayscale if not already
             img = img.convert('L')
-            
+
             # Resize to 28x28 if needed
             if img.size != (28, 28):
                 img = img.resize((28, 28))
-            
+
             # Apply transform (this handles conversion to tensor and normalization)
             img_tensor = transform(img)
-            
+
             images.append(img_tensor)
-    
+
     # Stack all images into a single tensor
     images_tensor = torch.stack(images)
     print("######", images_tensor.shape)
@@ -166,18 +171,18 @@ if __name__ == '__main__':
         y = train_dataset.targets[:10000]
         confidence = np.ones(len(y))
 
-    if args.data == 'fake' : 
+    if args.data == 'fake' :
         X = load_bw_images("samples")
         print(X.shape)
         y,confidence = labelize(X)
 
-    if args.encoding == "image": 
+    if args.encoding == "image":
         tsne_pipeline(X,y, f"MNIST {args.data} Dataset -  VGG 5 (fine-tuned) Space",confidence)
 
-    if args.encoding == "vgg5": 
+    if args.encoding == "vgg5":
         new_X = vgg5_encoding(X)
         tsne_pipeline(new_X,y, f"MNIST {args.data} Dataset -  VGG 5 (fine-tuned) Space",confidence)
 
-    if args.encoding == "vgg16": 
+    if args.encoding == "vgg16":
         new_X = vgg16_encoding(X)
         tsne_pipeline(new_X,y, f"MNIST {args.data} Dataset - VGG 16 (pretrained) Space",confidence)
