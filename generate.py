@@ -25,9 +25,22 @@ if __name__ == '__main__':
 
     G = Generator(g_output_dim = mnist_dim).to(device)
     G.device = device
-    G = load_model(G, 'checkpoints', mode = 'G')
+    G = load_model(G, 'checkpoints', mode = 'G_b')
     D = Discriminator(mnist_dim).to(device)
-    D = load_model(D, 'checkpoints', mode = 'D')
+    def load_model(model, folder, mode='G'):
+        ckpt = torch.load(os.path.join(folder, mode + '.pth'), map_location=torch.device(device))
+        # Adjust key names if needed
+        adjusted_ckpt = {}
+        for k, v in ckpt.items():
+            new_key = k
+            # Example: Change key names if they differ
+            if 'weight' in k:
+                new_key = k.replace('weight', 'weight_orig')  # Modify this line as needed
+            adjusted_ckpt[new_key] = v
+        model.load_state_dict(adjusted_ckpt, strict=False)  # Use strict=False to ignore unexpected keys
+        return model
+
+    D = load_model(D, 'checkpoints', mode = 'D_b')
     D.device = device
 
     if device == 'cuda':
@@ -43,6 +56,6 @@ if __name__ == '__main__':
     os.makedirs('samples', exist_ok=True)
 
     n_samples = args.n_samples
-    img = make_image(G = G, D= D, batchsize = n_samples, N_update=100, ot=True, mode='dot', k=1, lr=0.05, optmode='sgd')
+    img = make_image(G = G, D= D, batchsize = n_samples, N_update= 6, ot=True, mode='dot', k=1, lr=0.01, optmode='adam')
     for k in range(n_samples):
         torchvision.utils.save_image(img[k, :, :], os.path.join('samples', f'{k}.png'))

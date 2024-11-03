@@ -104,7 +104,7 @@ class Transporter_latent_space():
         if self.opt_mode == 'sgd':
             self.opt = torch.optim.SGD([self.z], lr)
         elif self.opt_mode == 'adam':
-            self.opt = torch.optim.Adam([self.z], lr, betas=(0.0, 0.9))
+            self.opt = torch.optim.Adam([self.z], lr, betas=(0.0, 0.8))
         else:
             raise NotImplementedError("Optimizer not implemented yet.")
 
@@ -129,7 +129,7 @@ class Transporter_latent_space():
             self.z = self.z.reshape(-1, 1, 10, 10)
             bs, _, dim, _= self.z.shape
             prod = torch.bmm(grad.view(bs, dim, 1), self.z.data.view(bs, 1, dim)).view(bs, 1, 1, 1)
-            self.z.grad = grad - self.z.data * (prod / sqrt(256)) 
+            self.z.grad = grad - self.z.data * (prod / sqrt(256))
             self.opt.step()
 
 
