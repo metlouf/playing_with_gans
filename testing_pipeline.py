@@ -48,7 +48,7 @@ class TestingPipeline:
                 print(f'lr = {lr}, N_update = {N_update}')
                 img = make_image(G = self.G, D= self.D, batchsize = n_samples, N_update=N_update, ot=True, mode='dot', k=1, lr=lr, optmode='adam')
                 for k in range(n_samples):
-                    torchvision.utils.save_image(img[k, :, :], os.path.join('samples', f'{k}.png'))
+                    torchvision.utils.save_image(img[k, :, :], os.path.join('samples/fake_samples', f'{k}.png'))
                 ipr = IPR(device = self.device, k = 5, batch_size= batch_size, num_samples = 5000)
                 ipr.compute_manifold_ref(self.path_real)
                 metric = ipr.precision_and_recall(self.path_real + '/../fake_samples')
