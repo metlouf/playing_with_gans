@@ -40,7 +40,7 @@ class TestingPipeline:
                             break
         except:
             print('Real samples already exist')
-
+        os.makedirs('samples/fake_samples', exist_ok=True)
         n_samples = args.n_samples
         for lr in args.lr:
             for N_update in args.N_update:
