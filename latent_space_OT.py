@@ -2,13 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
-#rom caca import pipi
+from math import sqrt
 
 def l2_norm(x):
     return torch.sqrt(torch.sum(x ** 2, dim=1))
 
-def eff_k(G, D, trial=100):
+def eff_k(G, D, trial=50):
     with torch.no_grad():
+            print('alors ??')
             # Generate latent vectors z1 and z2
             z1 = G.make_hidden(trial).to(G.device)
             z2 = G.make_hidden(trial).to(G.device)
@@ -18,6 +19,7 @@ def eff_k(G, D, trial=100):
             # Get discriminator outputs f1 and f2
             f1 = D(x1)
             f2 = D(x2)
+            print(f2.shape, f1.shape)
             # Compute the distance between discriminator outputs and latent vectors
             nu = l2_norm(f2 - f1) # L2 norm for distance of D outputs
             de_l = l2_norm(z2 - z1)  # L2 norm for distance of z vectors
@@ -41,22 +43,22 @@ def eff_K(G, D, trial=100):
 
 
 class Transporter_target_space():
-    def __init__(self, G, D, k, zy_xp, mode, opt_mode = "adam") -> None:
+    def __init__(self, G, D, k, y_xp, mode = 'dot', opt_mode = "adam") -> None:
         self.G = G
         self.D = D
         self.device = G.device
-        self.zy = zy_xp.to(self.device)
+        self.y = y_xp.to(self.device).detach()
         self.mode = mode
-        self.onegrads = torch.ones(zy_xp.shape[0], 1, dtype=torch.float32)
         self.lc = k
         self.dist = "uniform"
         self.opt_mode = opt_mode
+        self.space = 'target'
 
     def get_x_va(self):
         return self.x.data
 
     def set_(self, y_xp, lr):
-        self.x =  y_xp.detach().clone().to(self.device)
+        self.x = y_xp.detach().clone().to(self.device)
         self.x.requires_grad = True
         if self.opt_mode == 'sgd':
             self.opt = torch.optim.SGD([self.x], lr)
@@ -65,31 +67,31 @@ class Transporter_target_space():
         else:
             print("Optimizer not implemented yet.")
 
-    def H_y(self, x):
+    def H_y(self):
         if self.mode=='dot':
-            return - self.D(x)/self.lc + torch.reshape(l2_norm(x - self.y + 0.001),self.D(x).shape)
+            return - self.D(self.x)/self.lc + torch.reshape(l2_norm(self.x - self.y + 0.001),self.D(self.x).shape)
         else:
-            return - self.D(x)/self.lc
+            return - self.D(self.x)/self.lc
 
     def step(self):
-        x = self.get_x_va()
         self.opt.zero_grad()
-        loss = self.H_y(x).mean()
+        loss = self.H_y().mean()
         loss.backward()
+        old_x = self.x.clone().detach()
         self.opt.step()
-        self.x.data.clamp_(-2, 2)
+
 
 class Transporter_latent_space():
-    def __init__(self, G, D, k, zy_xp, mode, opt_mode = "adam"):
+    def __init__(self, G, D, k, zy_xp, mode = 'dot', opt_mode = "adam"):
         self.G = G
         self.D = D
         self.device = G.device
-        self.zy = zy_xp.to(self.device)
+        self.zy = zy_xp.to(self.device).detach()
         self.mode = mode
-        self.onegrads = torch.ones(zy_xp.shape[0], 1, dtype=torch.float32).to(G.device)
         self.lc = k
-        self.dist = "uniform"
+        self.dist = "normal"
         self.opt_mode = opt_mode
+        self.space = 'latent'
 
 
     def get_z_va(self):
@@ -103,15 +105,19 @@ class Transporter_latent_space():
         self.z.requires_grad = True
         if self.opt_mode == 'sgd':
             self.opt = torch.optim.SGD([self.z], lr)
+            self.lr = lr
         elif self.opt_mode == 'adam':
             self.opt = torch.optim.Adam([self.z], lr, betas=(0.0, 0.8))
+            self.lr = lr
+        elif self.opt_mode == 'projected_GD':
+            self.lr = lr
         else:
             raise NotImplementedError("Optimizer not implemented yet.")
 
     def H_zy(self):
         x = self.G(self.z)
         if self.mode=='dot':
-            return - self.D(x)/self.lc + torch.reshape(l2_norm(self.z - torch.tensor(self.zy) + 0.001), self.D(x).shape)
+            return - self.D(x).detach()/self.lc + torch.reshape(l2_norm(self.z - torch.tensor(self.zy) + 0.001), self.D(x).shape)
         else:
             return - self.D(x)/self.lc
 
@@ -124,35 +130,76 @@ class Transporter_latent_space():
             self.z.data.clamp_(-1, 1)
 
         elif self.dist=='normal':
-            grad = self.z.grad
-            print(grad)
-            self.z = self.z.reshape(-1, 1, 10, 10)
-            bs, _, dim, _= self.z.shape
-            prod = torch.bmm(grad.view(bs, dim, 1), self.z.data.view(bs, 1, dim)).view(bs, 1, 1, 1)
-            self.z.grad = grad - self.z.data * (prod / sqrt(256))
-            self.opt.step()
+            if self.opt_mode == 'projected_GD':
+                batch_size , D = self.z.shape[0], int(sqrt(self.z.shape[1]))
+                g = self.z.grad.clone()  # Store the original gradient
+                g_reshaped = g.view(batch_size, 1, D*D)
+                z_reshaped = self.z.view(batch_size, D*D, 1)
+                # Dot product to project g onto z
+                dot_product = torch.bmm(g_reshaped, z_reshaped)
+                projection = ((dot_product * z_reshaped) / torch.sqrt(torch.tensor(D, dtype=torch.float32))).squeeze(-1)
+                # Calculate the modified gradient
+                modified_grad = g - projection
+                print(self.z, self.lr*modified_grad)
+                # Step 2: Update z manually using the modified gradient
+                with torch.no_grad():  # Ensures no gradients are tracked for this update
+                    self.z -= self.lr * modified_grad  # Apply the step
+
+                self.z.grad.zero_()  # Clear the gradient
+                self.z.requires_grad = True  # Re-enable gradient tracking
+            else:
+                self.opt.step()
 
 
 def discriminator_optimal_transport_from(y_or_z_xp, transporter,G, N_update=10, lr = 0.05, show = False):
     transporter.set_(y_or_z_xp, lr = lr)
+    if show:
+        n_cols = 7  # Number of images per row
+        fig, ax = plt.subplots(N_update, n_cols, figsize=(15, N_update * 2))  # Dynamic figure height
+        fig.subplots_adjust(wspace=0.05, hspace=0.05)  # Minimal spacing between images
+        ax = ax.flatten()
     for i in range(N_update):
-        transporter.lc = eff_k(transporter.G, transporter.D, trial = 200)
+        if transporter.space == 'latent':
+            transporter.lc = eff_k(transporter.G, transporter.D, trial = 200)
         transporter.step()
-        if show:
-            if i%10 == 0:
-                plt.figure()
-                plt.imshow(G(transporter.get_z_va()).reshape(-1, 28, 28).data.cpu()[0])
+        if show and i % 1 == 0:
+            if transporter.space == 'target':
+                image = transporter.get_x_va().reshape(-1, 28, 28).data.cpu()
+            else:
+                image = G(transporter.get_z_va()).reshape(-1, 28, 28).data.cpu()
+            for j in range(min(n_cols, image.size(0))):  # Ensure only 6 images are plotted
+                ax_idx = i * n_cols + j
+                if ax_idx < len(ax):  # Ensure we don't exceed subplot limits
+                    ax[ax_idx].imshow(image[j], cmap='gray')
+                    ax[ax_idx].axis('off')
+                    ax[ax_idx].set_title(f'Iteration {i}', fontsize=8)
+    if show:
+        fig.suptitle('Evolution of the Generated Images')
+        plt.tight_layout()
+        plt.show()
 
 
-def make_image(G, D, batchsize, N_update=100, ot=True, mode='dot', k=1, lr=0.05, optmode='sgd', show = False):
+
+
+def make_image(G, D, batchsize, N_update=100, ot=True, space='target', k=1, lr=0.05, optmode='sgd', show = False):
     z = G.make_hidden(batchsize).to(G.device)
     #with torch.no_grad():
     if ot:
         z_xp = z
-        T = Transporter_latent_space(G, D, k, z_xp, mode=mode, opt_mode= optmode)
+        if space == 'target':
+            y_xp = G(z_xp)
+            T = Transporter_target_space(G, D, k, y_xp, opt_mode= optmode)
+            z_xp = y_xp
+        elif space == 'latent':
+            T = Transporter_latent_space(G, D, k, z_xp, opt_mode= optmode)
+        else:
+            raise NotImplementedError("Space not implemented yet.")
         discriminator_optimal_transport_from(z_xp, T, G, N_update, show= show)
-        tz_y = T.get_z_va().data
-        y = G(tz_y)
+        if space == 'target':
+            y = T.get_x_va().data
+        else:
+            tz_y = T.get_z_va().data
+            y = G(tz_y)
     else:
         y = G(z)
     return y.reshape(batchsize, 28, 28).data.cpu()

@@ -16,7 +16,7 @@ class Generator(nn.Module):
 
         # Initialize weights
         #self._initialize_weights()
-    
+
     def _initialize_weights(self):
         for module in self.modules():
             if isinstance(module, nn.Linear):
@@ -24,7 +24,7 @@ class Generator(nn.Module):
                 nn.init.xavier_uniform_(module.weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
-        
+
         # Special initialization for the final layer
         nn.init.xavier_uniform_(self.fc4.weight, gain=nn.init.calculate_gain('tanh'))
         if self.fc4.bias is not None:
@@ -39,7 +39,7 @@ class Generator(nn.Module):
 
     def make_hidden(self, batch_size):
         # Generate samples in the latent space
-        return torch.rand(batch_size, 100).uniform_(-1, 1)
+        return torch.rand(batch_size, 100).normal_(0, 1)
 
 class Discriminator(nn.Module):
     def __init__(self, d_input_dim):
@@ -51,7 +51,7 @@ class Discriminator(nn.Module):
 
         # Initialize weights
         #self._initialize_weights()
-    
+
     def _initialize_weights(self):
         for module in self.modules():
             if isinstance(module, nn.Linear):
@@ -59,12 +59,12 @@ class Discriminator(nn.Module):
                 nn.init.xavier_uniform_(module.weight, gain=nn.init.calculate_gain('leaky_relu', 0.2))
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
-        
+
         # Special initialization for the final layer
         nn.init.xavier_uniform_(self.fc4.weight, gain=nn.init.calculate_gain('sigmoid'))
         if self.fc4.bias is not None:
             nn.init.constant_(self.fc4.bias, 0)
-    
+
     # forward method
     def forward(self, x):
         x = F.leaky_relu(self.fc1(x), 0.2)
