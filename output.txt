@@ -1,0 +1,214 @@
+lr = 0.1, N_update = 5
+FID = 24.628316185143518
+precision = 0.662
+recall = 0.5497
+10
+
+lr = 0.1, N_update = 10
+FID = 35.94990085976556
+precision = 0.6165
+recall = 0.5198
+15
+
+lr = 0.1, N_update = 15
+FID = 49.72491519540429
+precision = 0.5698
+recall = 0.4629
+20
+
+lr = 0.1, N_update = 20
+FID = 55.556517453339666
+precision = 0.5511
+recall = 0.4867
+50
+
+lr = 0.1, N_update = 50
+FID = 78.91608154793062
+precision = 0.4864
+recall = 0.4353
+70
+
+lr = 0.1, N_update = 70
+FID = 83.29922327505193
+precision = 0.4784
+recall = 0.405
+100
+
+lr = 0.1, N_update = 100
+FID = 88.01973459534508
+precision = 0.4722
+recall = 0.4293
+150
+
+lr = 0.1, N_update = 150
+FID = 93.37277021802373
+precision = 0.4507
+recall = 0.4468
+200
+
+lr = 0.1, N_update = 200
+FID = 93.99696032874877
+precision = 0.4479
+recall = 0.4142
+5
+
+lr = 0.01, N_update = 5
+FID = 24.84073737477118
+precision = 0.672
+recall = 0.5687
+10
+
+lr = 0.01, N_update = 10
+FID = 37.716980242234
+precision = 0.6134
+recall = 0.5329
+15
+
+lr = 0.01, N_update = 15
+FID = 48.906582808525485
+precision = 0.5838
+recall = 0.4721
+20
+
+lr = 0.01, N_update = 20
+FID = 55.729841748687534
+precision = 0.5392
+recall = 0.4791
+50
+
+lr = 0.01, N_update = 50
+FID = 78.46085174985191
+precision = 0.4838
+recall = 0.408
+70
+
+lr = 0.01, N_update = 70
+FID = 84.82788472728305
+precision = 0.4758
+recall = 0.4175
+100
+
+lr = 0.01, N_update = 100
+FID = 86.9808623176327
+precision = 0.4482
+recall = 0.4023
+150
+
+lr = 0.01, N_update = 150
+FID = 93.31053907784383
+precision = 0.4563
+recall = 0.3414
+200
+
+lr = 0.01, N_update = 200
+FID = 96.83657285597104
+precision = 0.4467
+recall = 0.3306
+5
+
+lr = 0.001, N_update = 5
+FID = 25.181188308429057
+precision = 0.6662
+recall = 0.5624
+10
+
+lr = 0.001, N_update = 10
+FID = 38.28560042798955
+precision = 0.6209
+recall = 0.5051
+15
+
+lr = 0.001, N_update = 15
+FID = 47.67464255703308
+precision = 0.5861
+recall = 0.4571
+20
+
+lr = 0.001, N_update = 20
+FID = 55.74259670395034
+precision = 0.549
+recall = 0.4612
+50
+
+lr = 0.001, N_update = 50
+FID = 79.55211386278467
+precision = 0.4901
+recall = 0.3965
+70
+
+lr = 0.001, N_update = 70
+FID = 85.29240890328362
+precision = 0.4718
+recall = 0.3381
+100
+
+lr = 0.001, N_update = 100
+FID = 88.59180382608602
+precision = 0.4678
+recall = 0.4215
+150
+
+lr = 0.001, N_update = 150
+FID = 93.4640067723505
+precision = 0.4511
+recall = 0.438
+200
+
+lr = 0.001, N_update = 200
+FID = 94.18085985456003
+precision = 0.451
+recall = 0.3085
+5
+
+lr = 0.0001, N_update = 5
+FID = 24.95775112632805
+precision = 0.6605
+recall = 0.5823
+10
+
+lr = 0.0001, N_update = 10
+FID = 38.92297768469052
+precision = 0.6116
+recall = 0.5114
+15
+
+lr = 0.0001, N_update = 15
+FID = 47.94645750784434
+precision = 0.5825
+recall = 0.4397
+20
+
+lr = 0.0001, N_update = 20
+FID = 55.7198087255791
+precision = 0.5565
+recall = 0.428
+50
+
+lr = 0.0001, N_update = 50
+FID = 78.94233404863593
+precision = 0.492
+recall = 0.3878
+70
+
+lr = 0.0001, N_update = 70
+FID = 83.97835727344196
+precision = 0.4808
+recall = 0.3899
+100
+
+lr = 0.0001, N_update = 100
+FID = 87.56575464954685
+precision = 0.4603
+recall = 0.4613
+150
+
+lr = 0.0001, N_update = 150
+FID = 92.29018394813977
+precision = 0.4606
+recall = 0.4018
+200
+
+lr = 0.0001, N_update = 200
+FID = 96.02341733809303
+precision = 0.4485
+recall = 0.426
