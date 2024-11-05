@@ -102,6 +102,7 @@ def tsne_pipeline(embeddings,labels, title,confidence=[]):
     plt.colorbar()
     plt.show()
 
+
 def load_bw_images(directory_path):
     image_paths = list(Path(directory_path).glob('*.[pj][np][g]*'))  # matches .jpg, .jpeg, .png
     if not image_paths:
