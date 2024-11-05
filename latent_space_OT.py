@@ -154,8 +154,8 @@ def discriminator_optimal_transport_from(y_or_z_xp, transporter,G, N_update=10, 
     transporter.set_(y_or_z_xp, lr = lr)
     if show:
         n_cols = 7  # Number of images per row
-        fig, ax = plt.subplots(N_update // 2, n_cols, figsize=(15, N_update))  # Dynamic figure height
-        fig.subplots_adjust(wspace=0.05, hspace=0.05)  # Minimal spacing between images
+        fig, ax = plt.subplots(N_update // 10  , n_cols)  # Dynamic figure height
+        # fig.subplots_adjust(wspace=0., hspace=0.)  # Minimal spacing between images
         ax = ax.flatten()
         old_image = torch.zeros(10000, 28, 28).data.cpu()
     for i in range(N_update):
@@ -164,13 +164,13 @@ def discriminator_optimal_transport_from(y_or_z_xp, transporter,G, N_update=10, 
         else:
             transporter.lc = 1#eff_K(transporter.G, transporter.D, trial = 200)
         transporter.step()
-        if show and i % 2 == 0:
+        if show and i % 10 == 0:
             if transporter.space == 'target':
                 image = transporter.get_x_va().reshape(-1, 28, 28).data.cpu()
             else:
                 image = G(transporter.get_z_va()).reshape(-1, 28, 28).data.cpu()
             for j in range(min(n_cols, image.size(0))):  # Ensure only 6 images are plotted
-                ax_idx = i // 2 * n_cols + j
+                ax_idx = i // 10 * n_cols + j
                 if ax_idx < len(ax):  # Ensure we don't exceed subplot limits
                     ax[ax_idx].imshow(image[j, :, :], cmap='gray')
                     ax[ax_idx].axis('off')
