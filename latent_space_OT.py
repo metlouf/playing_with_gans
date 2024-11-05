@@ -7,9 +7,8 @@ from math import sqrt
 def l2_norm(x):
     return torch.sqrt(torch.sum(x ** 2, dim=1))
 
-def eff_k(G, D, trial=50):
+def eff_k(G, D, trial=10):
     with torch.no_grad():
-            print('alors ??')
             # Generate latent vectors z1 and z2
             z1 = G.make_hidden(trial).to(G.device)
             z2 = G.make_hidden(trial).to(G.device)
@@ -19,13 +18,12 @@ def eff_k(G, D, trial=50):
             # Get discriminator outputs f1 and f2
             f1 = D(x1)
             f2 = D(x2)
-            print(f2.shape, f1.shape)
             # Compute the distance between discriminator outputs and latent vectors
             nu = l2_norm(f2 - f1) # L2 norm for distance of D outputs
             de_l = l2_norm(z2 - z1)  # L2 norm for distance of z vectors
             return torch.max(nu / de_l).item()
 
-def eff_K(G, D, trial=100):
+def eff_K(G, D, trial=10):
     with torch.no_grad():
             # Generate latent vectors z1 and z2
             z1 = G.make_hidden(trial).to(G.device)
@@ -47,7 +45,7 @@ class Transporter_target_space():
         self.G = G
         self.D = D
         self.device = G.device
-        self.y = y_xp.to(self.device).detach()
+        self.y = self.G(self.G.make_hidden(10000).to(self.device)).detach()
         self.mode = mode
         self.lc = k
         self.dist = "uniform"
@@ -69,7 +67,7 @@ class Transporter_target_space():
 
     def H_y(self):
         if self.mode=='dot':
-            return - self.D(self.x)/self.lc + torch.reshape(l2_norm(self.x - self.y + 0.001),self.D(self.x).shape)
+            return - self.D(self.x)/self.lc + torch.norm(self.x -self.y + 0.001, p = 2, dim = 1)
         else:
             return - self.D(self.x)/self.lc
 
@@ -86,7 +84,7 @@ class Transporter_latent_space():
         self.G = G
         self.D = D
         self.device = G.device
-        self.zy = zy_xp.to(self.device).detach()
+        self.zy = self.G.make_hidden(10000).to(self.device).detach()
         self.mode = mode
         self.lc = k
         self.dist = "normal"
@@ -101,7 +99,7 @@ class Transporter_latent_space():
         return self.onegrads.to(G.device).to(grad.dtype)
 
     def set_(self, zy_xp, lr):
-        self.z = zy_xp.detach().clone().to(self.device)
+        self.z = nn.Parameter(zy_xp.detach().clone()).to(self.device)
         self.z.requires_grad = True
         if self.opt_mode == 'sgd':
             self.opt = torch.optim.SGD([self.z], lr)
@@ -117,12 +115,13 @@ class Transporter_latent_space():
     def H_zy(self):
         x = self.G(self.z)
         if self.mode=='dot':
-            return - self.D(x).detach()/self.lc + torch.reshape(l2_norm(self.z - torch.tensor(self.zy) + 0.001), self.D(x).shape)
+            return - self.D(self.G(self.z))/self.lc + torch.norm(self.z - self.zy.clone().detach() + 0.001, p=2, dim=1)
         else:
             return - self.D(x)/self.lc
 
     def step(self):
-        self.opt.zero_grad()
+        if self.opt_mode != 'projected_GD':
+            self.opt.zero_grad()
         loss = self.H_zy().mean()
         loss.backward()
         if self.dist=='uniform':
@@ -140,7 +139,6 @@ class Transporter_latent_space():
                 projection = ((dot_product * z_reshaped) / torch.sqrt(torch.tensor(D, dtype=torch.float32))).squeeze(-1)
                 # Calculate the modified gradient
                 modified_grad = g - projection
-                print(self.z, self.lr*modified_grad)
                 # Step 2: Update z manually using the modified gradient
                 with torch.no_grad():  # Ensures no gradients are tracked for this update
                     self.z -= self.lr * modified_grad  # Apply the step
@@ -151,30 +149,33 @@ class Transporter_latent_space():
                 self.opt.step()
 
 
+
 def discriminator_optimal_transport_from(y_or_z_xp, transporter,G, N_update=10, lr = 0.05, show = False):
     transporter.set_(y_or_z_xp, lr = lr)
     if show:
         n_cols = 7  # Number of images per row
-        fig, ax = plt.subplots(N_update, n_cols, figsize=(15, N_update * 2))  # Dynamic figure height
+        fig, ax = plt.subplots(N_update // 2, n_cols, figsize=(15, N_update))  # Dynamic figure height
         fig.subplots_adjust(wspace=0.05, hspace=0.05)  # Minimal spacing between images
         ax = ax.flatten()
+        old_image = torch.zeros(10000, 28, 28).data.cpu()
     for i in range(N_update):
         if transporter.space == 'latent':
-            transporter.lc = eff_k(transporter.G, transporter.D, trial = 200)
+            transporter.lc = 1#eff_k(transporter.G, transporter.D, trial = 200)
+        else:
+            transporter.lc = 1#eff_K(transporter.G, transporter.D, trial = 200)
         transporter.step()
-        if show and i % 1 == 0:
+        if show and i % 2 == 0:
             if transporter.space == 'target':
                 image = transporter.get_x_va().reshape(-1, 28, 28).data.cpu()
             else:
                 image = G(transporter.get_z_va()).reshape(-1, 28, 28).data.cpu()
             for j in range(min(n_cols, image.size(0))):  # Ensure only 6 images are plotted
-                ax_idx = i * n_cols + j
+                ax_idx = i // 2 * n_cols + j
                 if ax_idx < len(ax):  # Ensure we don't exceed subplot limits
-                    ax[ax_idx].imshow(image[j], cmap='gray')
+                    ax[ax_idx].imshow(image[j, :, :], cmap='gray')
                     ax[ax_idx].axis('off')
                     ax[ax_idx].set_title(f'Iteration {i}', fontsize=8)
     if show:
-        fig.suptitle('Evolution of the Generated Images')
         plt.tight_layout()
         plt.show()
 
