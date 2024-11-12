@@ -56,6 +56,6 @@ if __name__ == '__main__':
     os.makedirs('samples', exist_ok=True)
 
     n_samples = args.n_samples
-    img = make_image(G = G, D= D, batchsize = n_samples, N_update= 50, ot=True, space = 'target', k=1, lr=0.1, optmode='adam')
+    img = make_image(G = G, D= D, batchsize = n_samples, N_update= 5, ot=True, space = 'latent', k=1, lr=0.01, optmode='adam')
     for k in range(n_samples):
         torchvision.utils.save_image(img[k, :, :], os.path.join('samples', f'{k}.png'))
