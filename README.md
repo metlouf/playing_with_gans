@@ -1,5 +1,6 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/MaLr9PVg)
 # DataLabAssignement2
+## Description
+We test different to try to understand, distribution induced by GANS and how we can improve it's stability.
 
 ## generate.py
 Use the file *generate.py* to generate 10000 samples of MNIST in the folder samples. 
